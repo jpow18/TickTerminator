@@ -1,5 +1,9 @@
-/tfod
-/Tensorflow
-/.ipynb_checkpoints
-/ipynb_checkpoints
-.ipynb_checkpoints
+__pycache__/
+*.egg-info/
+.venv/
+.pytest_cache/
+.ruff_cache/
+dist/
+build/
+/detections.csv
+/report.html

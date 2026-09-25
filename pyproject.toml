@@ -1,0 +1,32 @@
+[project]
+name = "tickterminator"
+version = "0.1.0"
+description = "Find pests such as tent caterpillars in drone photos."
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+requires-python = ">=3.10"
+dependencies = ["pillow>=11"]
+
+[project.optional-dependencies]
+ml = ["scipy>=1.11", "torch>=2.2", "torchvision>=0.17", "transformers>=4.40"]
+
+[project.scripts]
+tickterminator = "tickterminator.cli:main"
+
+[dependency-groups]
+dev = ["pytest>=8", "ruff>=0.6"]
+
+[build-system]
+requires = ["hatchling>=1.26"]
+build-backend = "hatchling.build"
+
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["tests"]
