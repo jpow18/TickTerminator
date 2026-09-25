@@ -4,7 +4,7 @@ from collections.abc import Iterable, Iterator, Sequence
 from pathlib import Path
 
 from tickterminator.detectors import Detector, DetectorKind
-from tickterminator.pests import Pest
+from tickterminator.pests import Pest, View
 from tickterminator.reports import ReportFormat
 from tickterminator.scan import PhotoResult, ScanConfig, scan_folder, scan_paths
 from tickterminator.survey import DEFAULT_SECTOR_SIZE_M, Survey
@@ -69,8 +69,8 @@ def add_detection_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--pests",
         type=parse_pests,
-        default=list(Pest),
-        help="Comma-separated pests to find. Default: all.",
+        default=Pest.for_view(View.AERIAL),
+        help="Comma-separated pests to find. Default: all pests seen from a drone.",
     )
     parser.add_argument(
         "--detector",
@@ -115,7 +115,7 @@ def add_report_arguments(parser: argparse.ArgumentParser) -> None:
 
 def run_pests(args: argparse.Namespace) -> None:
     for pest in Pest:
-        print(f"{pest.name.lower():<20} {pest.spec.display_name}")
+        print(f"{pest.name.lower():<20} {pest.spec.display_name:<26} {pest.spec.view.value}")
 
 
 def run_scan(args: argparse.Namespace) -> None:

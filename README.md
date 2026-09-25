@@ -4,7 +4,7 @@ Find pests in drone photos.
 
 Fly a drone over a forest, orchard or nursery. Give the photos to TickTerminator. It tells you which photos show pests, and where in each photo.
 
-The first target is the **eastern tent caterpillar**. Its silk tents are large and easy to see from the air. Ticks are too small for a drone camera, so they are a future target for a different camera setup.
+The first target is the **eastern tent caterpillar**. Its silk tents are large and easy to see from the air. Ticks are too small for a drone camera, so TickTerminator counts them in close-up photos instead (see [Count ticks](#count-ticks)).
 
 > **Status:** early prototype. The default detector is zero-shot: it finds pests from text descriptions and needs no training data. Results will have errors. Always check a finding before you act on it. For better results, [train a model](#train-a-model) on your own labeled photos.
 
@@ -63,7 +63,7 @@ The flight area is divided into square sectors (default 50 m, set with `--sector
 
 | Option | Default | Description |
 |---|---|---|
-| `--pests` | all | Comma-separated pest names. |
+| `--pests` | all drone pests | Comma-separated pest names. See `tickterminator pests`. |
 | `--threshold` | 0.2 (OWLv2), 0.5 (trained) | Minimum score, 0 to 1. Increase it to get fewer false detections. |
 | `--detector` | `owlv2` | `owlv2` finds pests from text prompts. `trained` uses a model from `tickterminator train`. |
 | `--model` | – | Model folder for `--detector trained`. |
@@ -104,6 +104,16 @@ The zero-shot detector is a good start, but a model trained on your own photos i
 
 Keep some labeled photos out of training, and scan them to check the model. A few hundred labeled tents is a good start.
 
+## Count ticks
+
+A tick is 1–5 mm, too small for a drone camera. To measure ticks in an area, use a *tick drag*: pull a white cloth (about 1 m²) over the grass for a set distance, then photograph the cloth with a phone. TickTerminator counts the ticks in the photos:
+
+```bash
+tickterminator scan ./drag_photos --pests tick --tile-size 512
+```
+
+A smaller tile size makes small ticks larger for the detector. Phone photos usually have GPS, but no drone data, so the findings have no map position. The file name and the count for each photo are in the report.
+
 ## Scan during the flight
 
 `watch` scans new photos as they arrive in a folder, and prints each finding immediately:
@@ -132,7 +142,8 @@ Sector labels can change during a flight, because the flight area grows. Use the
 - [ ] **M3b:** a public labeled tent caterpillar dataset and a published model
 - [x] **M4:** `watch` command for real-time scans
 - [ ] **M4b:** speed tests on edge hardware, and ONNX export for faster models
-- [ ] **M5:** more pests, and a phone app to count ticks
+- [x] **M5:** more pests (bagworm), and tick counts from close-up photos
+- [ ] **M6:** phone app for tick counts in the field
 
 ## Contribute
 

@@ -18,13 +18,14 @@ The tests use a fake detector, so you do not need PyTorch to run them. To run re
 Add a member to `Pest` in `src/tickterminator/pests.py`:
 
 ```python
-BAGWORM = PestSpec(
-    "Bagworm",
-    ("small brown cone-shaped silk bags hanging from evergreen branches",),
+FALL_WEBWORM = PestSpec(
+    "Fall webworm",
+    View.AERIAL,
+    ("silk web covering the leaves at the end of a tree branch",),
 )
 ```
 
-Write the prompts to describe what a drone camera sees, not the insect itself. Test the prompts on real drone photos, and include example results in your pull request.
+`View.AERIAL` pests are for drone photos. `View.CLOSE_UP` pests are for close-up photos, and `scan` finds them only when you name them with `--pests`. Write the prompts to describe what the camera sees, for example the web, not the insect itself. Test the prompts on real drone photos, and include example results in your pull request.
 
 ## Add a detector
 

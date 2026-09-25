@@ -64,3 +64,10 @@ def test_scan_writes_default_reports(photo_folder, tmp_path, monkeypatch):
     cli.main(["scan", str(photo_folder)])
     assert (tmp_path / "detections.csv").exists()
     assert (tmp_path / "report.html").exists()
+
+
+def test_scan_skips_close_up_pests_by_default(photo_folder, tmp_path, fake_detector):
+    pests_seen = []
+    fake_detector.detect = lambda image, pests: pests_seen.append(list(pests)) or []
+    cli.main(["scan", str(photo_folder), "--output", str(tmp_path / "report.csv")])
+    assert "TICK" not in {pest.name for pest in pests_seen[0]}
