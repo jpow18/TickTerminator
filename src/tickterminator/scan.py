@@ -1,4 +1,4 @@
-from collections.abc import Iterator, Sequence
+from collections.abc import Iterable, Iterator, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -66,7 +66,7 @@ def locate(detection: Detection, photo: Photo) -> GeoPoint | None:
 
 
 def scan_paths(
-    paths: Sequence[Path], detector: Detector, config: ScanConfig
+    paths: Iterable[Path], detector: Detector, config: ScanConfig
 ) -> Iterator[PhotoResult]:
     for path in paths:
         yield scan_photo(load_photo(path, config.fallback_altitude_m), detector, config)

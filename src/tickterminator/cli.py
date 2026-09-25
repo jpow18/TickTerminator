@@ -6,9 +6,10 @@ from pathlib import Path
 from tickterminator.detectors import Detector, DetectorKind
 from tickterminator.pests import Pest
 from tickterminator.reports import ReportFormat
-from tickterminator.scan import PhotoResult, ScanConfig, scan_folder
+from tickterminator.scan import PhotoResult, ScanConfig, scan_folder, scan_paths
 from tickterminator.survey import DEFAULT_SECTOR_SIZE_M, Survey
 from tickterminator.tiling import TilingConfig
+from tickterminator.watch import watch_photos
 
 DEFAULT_OUTPUTS = [Path("detections.csv"), Path("report.html")]
 
@@ -34,6 +35,22 @@ def build_parser() -> argparse.ArgumentParser:
     add_detection_arguments(scan)
     add_report_arguments(scan)
     scan.set_defaults(handler=run_scan)
+
+    watch = commands.add_parser(
+        "watch", help="Scan new photos as they arrive in a folder. Stop with Ctrl+C."
+    )
+    watch.add_argument("folder", type=Path, help="Folder where new photos arrive.")
+    watch.add_argument(
+        "--poll-interval", type=float, default=2.0, help="Seconds between folder checks."
+    )
+    watch.add_argument(
+        "--stop-after-idle",
+        type=float,
+        help="Stop when no new photos arrive for this many seconds. Default: never.",
+    )
+    add_detection_arguments(watch)
+    add_report_arguments(watch)
+    watch.set_defaults(handler=run_watch)
 
     train = commands.add_parser("train", help="Fine-tune a detector on labeled photos.")
     train.add_argument("labels", type=Path, help="COCO file with pest names as categories.")
@@ -110,6 +127,37 @@ def run_scan(args: argparse.Namespace) -> None:
     results = list(with_progress(scan_folder(args.folder, detector, config)))
     write_reports(Survey.from_results(results, args.sector_size), reports)
     warn_if_not_located(results)
+
+
+def run_watch(args: argparse.Namespace) -> None:
+    require_folder(args.folder)
+    reports = report_targets(args)
+    config = scan_config(args)
+    detector = create_detector(args)
+    photos = watch_photos(args.folder, args.poll_interval, args.stop_after_idle)
+    print(f"Watching {args.folder}. Stop with Ctrl+C.", file=sys.stderr)
+
+    results: list[PhotoResult] = []
+    try:
+        for result in with_progress(scan_paths(photos, detector, config)):
+            results.append(result)
+            announce_findings(result)
+            if result.findings:
+                write_reports(Survey.from_results(results, args.sector_size), reports)
+    except KeyboardInterrupt:
+        print("Stopped.", file=sys.stderr)
+    write_reports(Survey.from_results(results, args.sector_size), reports)
+
+
+def announce_findings(result: PhotoResult) -> None:
+    for finding in result.findings:
+        detection = finding.detection
+        where = (
+            f"{finding.location.latitude:.6f}, {finding.location.longitude:.6f}"
+            if finding.location
+            else "no position"
+        )
+        print(f"FOUND {detection.pest.name.lower()} ({detection.score:.2f}) at {where}")
 
 
 def run_train(args: argparse.Namespace) -> None:

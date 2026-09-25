@@ -104,6 +104,25 @@ The zero-shot detector is a good start, but a model trained on your own photos i
 
 Keep some labeled photos out of training, and scan them to check the model. A few hundred labeled tents is a good start.
 
+## Scan during the flight
+
+`watch` scans new photos as they arrive in a folder, and prints each finding immediately:
+
+```bash
+tickterminator watch ./incoming --output live.html --stop-after-idle 300
+```
+
+```
+./incoming/DJI_0042.JPG: 1 findings
+FOUND tent_caterpillar (0.71) at 45.500032, -73.250042
+```
+
+Point it at the folder where photos arrive: an SD card, a folder that syncs from the drone app, or a folder on a small computer on the drone that saves camera frames. It reads a photo only when the file is completely written. It updates the reports after each photo with findings, and again when it stops. Stop it with Ctrl+C, or use `--stop-after-idle SECONDS`, for example when the drone lands.
+
+Sector labels can change during a flight, because the flight area grows. Use the final report for sectors.
+
+**Hardware.** The same code runs on a laptop at the field or on an edge computer with a GPU, such as an NVIDIA Jetson. OWLv2 is slow without a GPU. A trained RT-DETR model is much faster. Speed on each device is not measured yet.
+
 ## Roadmap
 
 - [x] **M0:** package, tests, CI
@@ -111,7 +130,8 @@ Keep some labeled photos out of training, and scan them to check the model. A fe
 - [x] **M2:** GPS positions from photo metadata, map sectors, HTML map report
 - [x] **M3:** pre-labels, training command and trained detector
 - [ ] **M3b:** a public labeled tent caterpillar dataset and a published model
-- [ ] **M4:** real-time analysis on the drone or an edge computer
+- [x] **M4:** `watch` command for real-time scans
+- [ ] **M4b:** speed tests on edge hardware, and ONNX export for faster models
 - [ ] **M5:** more pests, and a phone app to count ticks
 
 ## Contribute
