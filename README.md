@@ -1,54 +1,72 @@
-markdown
+# TickTerminator
 
-# Tick Detection with TensorFlow
+Find pests in drone photos.
 
-This repository contains a collection of Jupyter Notebooks that demonstrate tick detection using TensorFlow. The notebooks utilize machine learning techniques to identify ticks in images.
+Fly a drone over a forest, orchard or nursery. Give the photos to TickTerminator. It tells you which photos show pests, and where in each photo.
 
-## Notebooks
+The first target is the **eastern tent caterpillar**. Its silk tents are large and easy to see from the air. Ticks are too small for a drone camera, so they are a future target for a different camera setup.
 
-1. [Data Preprocessing](notebooks/data_preprocessing.ipynb): This notebook covers the preprocessing steps for preparing the tick image dataset, including data cleaning, resizing, and normalization.
+> **Status:** early prototype. The detector is zero-shot: it finds pests from text descriptions and needs no training data. Results will have errors. Always check a detection before you act on it.
 
-2. [Model Training](notebooks/model_training.ipynb): This notebook focuses on training a TensorFlow model using the preprocessed tick image dataset. It includes model architecture, training configuration, and evaluation.
+## Install
 
-3. [Inference and Visualization](notebooks/inference_and_visualization.ipynb): This notebook demonstrates how to perform inference on new tick images using the trained model and visualize the detection results.
+Requires Python 3.10 or later.
 
-## Dataset
+```bash
+git clone https://github.com/jpow18/TickTerminator.git
+cd TickTerminator
+pip install '.[zero-shot]'
+```
 
-The tick image dataset used in these notebooks can be found in the `data` directory. It consists of a collection of labeled images of ticks in various settings.
+The `zero-shot` extra installs PyTorch and Hugging Face Transformers. The first scan downloads the OWLv2 model (about 600 MB).
 
-## Requirements
+## Use
 
-To run these notebooks, you need to have the following dependencies installed:
+```bash
+tickterminator pests                     # list the pests you can find
+tickterminator scan ./flight_photos      # find all pests, write detections.csv
+tickterminator scan ./flight_photos --pests tent_caterpillar --threshold 0.3 --output tents.csv
+```
 
-- Python 3.x
-- TensorFlow
-- Jupyter Notebook
+The report has one row for each detection:
 
-Please refer to the notebook instructions for detailed setup and installation steps.
+| image | pest | score | x_min | y_min | x_max | y_max |
+|---|---|---|---|---|---|---|
+| flight_photos/DJI_0042.JPG | tent_caterpillar | 0.412 | 2210 | 1305 | 2398 | 1466 |
 
-## Usage
+Box coordinates are pixels from the top-left corner of the photo.
 
-1. Clone this repository to your local machine:
-   ```bash
-   git clone https://github.com/jpow18/TickTerminator.git
+### Options
 
-    Open Jupyter Notebook:
+| Option | Default | Description |
+|---|---|---|
+| `--pests` | all | Comma-separated pest names. |
+| `--threshold` | 0.2 | Minimum score, 0 to 1. Increase it to get fewer false detections. |
+| `--tile-size` | 1024 | Large photos are cut into tiles of this size, so small targets stay visible. |
+| `--overlap` | 128 | Tile overlap in pixels, so targets on a tile edge are not lost. |
+| `--output` | `detections.csv` | Report file. The file extension sets the format. |
 
-    bash
+## How it works
 
-    jupyter notebook
+1. Find all photos in the folder and its subfolders.
+2. Cut each photo into overlapping tiles.
+3. Run the detector on each tile.
+4. Convert tile coordinates to photo coordinates and remove duplicate detections from the overlap areas.
+5. Write the report.
 
-    Navigate to the cloned repository and open the desired notebook.
+## Roadmap
 
-    Follow the instructions within each notebook to execute the code cells and explore tick detection with TensorFlow.
+- [x] **M0:** package, tests, CI
+- [x] **M1:** `scan` command with a zero-shot detector and a CSV report
+- [ ] **M2:** GPS positions from photo metadata, map sectors, HTML map report
+- [ ] **M3:** labeled tent caterpillar dataset and a fine-tuned model
+- [ ] **M4:** real-time analysis on the drone or an edge computer
+- [ ] **M5:** more pests, and a phone app to count ticks
 
-Contributing
+## Contribute
 
-Contributions to this repository are welcome. If you have any improvements, suggestions, or bug fixes, feel free to open an issue or submit a pull request.
-License
+See [CONTRIBUTING.md](CONTRIBUTING.md). Adding a new pest is a good first contribution.
 
-This project is licensed under the MIT License. See the LICENSE file for more details.
+## License
 
-vbnet
-
-Feel free to modify and expand the Markdown file according to your specific project needs. You can add additional sections, include images, or provide more detailed instructions if necessary.
+[MIT](LICENSE)
