@@ -30,11 +30,14 @@ def test_scan_writes_csv_report(photo_folder, tmp_path):
         {
             "image": (photo_folder / "photo.jpg").as_posix(),
             "pest": "tent_caterpillar",
-            "score": "0.900",
+            "score": "0.9",
             "x_min": "0",
             "y_min": "0",
             "x_max": "10",
             "y_max": "10",
+            "latitude": "",
+            "longitude": "",
+            "sector": "",
         }
     ]
 
@@ -54,3 +57,10 @@ def test_scan_rejects_unknown_output_type(photo_folder, tmp_path, capsys):
 def test_pests_command_lists_all_pests(capsys):
     cli.main(["pests"])
     assert "tent_caterpillar" in capsys.readouterr().out
+
+
+def test_scan_writes_default_reports(photo_folder, tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    cli.main(["scan", str(photo_folder)])
+    assert (tmp_path / "detections.csv").exists()
+    assert (tmp_path / "report.html").exists()

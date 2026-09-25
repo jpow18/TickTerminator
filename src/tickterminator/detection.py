@@ -16,6 +16,16 @@ class Box:
     def area(self) -> float:
         return max(0.0, self.x_max - self.x_min) * max(0.0, self.y_max - self.y_min)
 
+    @property
+    def center(self) -> tuple[float, float]:
+        return (self.x_min + self.x_max) / 2, (self.y_min + self.y_max) / 2
+
+    def expanded(self, fraction: float) -> "Box":
+        """Add `fraction` of the box width and height on each side."""
+        dx = (self.x_max - self.x_min) * fraction
+        dy = (self.y_max - self.y_min) * fraction
+        return Box(self.x_min - dx, self.y_min - dy, self.x_max + dx, self.y_max + dy)
+
     def shifted(self, dx: float, dy: float) -> "Box":
         return Box(self.x_min + dx, self.y_min + dy, self.x_max + dx, self.y_max + dy)
 

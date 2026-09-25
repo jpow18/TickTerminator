@@ -1,8 +1,9 @@
+from conftest import save_drone_photo
 from PIL import Image
 
 from tickterminator.detection import Box
 from tickterminator.pests import Pest
-from tickterminator.scan import scan_folder, scan_image
+from tickterminator.scan import ScanConfig, scan_folder, scan_image
 from tickterminator.tiling import TilingConfig
 
 
@@ -17,12 +18,14 @@ def test_scan_image_converts_tile_boxes_to_image_coordinates(fake_detector):
     }
 
 
-def test_scan_folder_finds_images_in_subfolders(tmp_path, fake_detector):
-    (tmp_path / "flight1").mkdir()
-    Image.new("RGB", (64, 64)).save(tmp_path / "flight1" / "a.JPG")
-    Image.new("RGB", (64, 64)).save(tmp_path / "b.png")
-    (tmp_path / "notes.txt").write_text("not an image")
+def test_scan_folder_locates_findings_on_geotagged_photos(tmp_path, fake_detector):
+    save_drone_photo(tmp_path / "geotagged.jpg")
+    Image.new("RGB", (64, 64)).save(tmp_path / "plain.jpg")
 
-    results = list(scan_folder(tmp_path, fake_detector, list(Pest), TilingConfig()))
+    results = list(scan_folder(tmp_path, fake_detector, ScanConfig(pests=list(Pest))))
 
-    assert [result.image_path.name for result in results] == ["b.png", "a.JPG"]
+    located = {result.path.name: result.findings[0].location for result in results}
+    assert located["plain.jpg"] is None
+    # The fake finding is in the top-left corner, so it is north-west of the camera.
+    assert located["geotagged.jpg"].latitude > 45.5
+    assert located["geotagged.jpg"].longitude < -73.25

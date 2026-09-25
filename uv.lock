@@ -1468,7 +1468,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "pillow", specifier = ">=10" },
+    { name = "pillow", specifier = ">=11" },
     { name = "scipy", marker = "extra == 'zero-shot'", specifier = ">=1.11" },
     { name = "torch", marker = "extra == 'zero-shot'", specifier = ">=2.2" },
     { name = "transformers", marker = "extra == 'zero-shot'", specifier = ">=4.40" },

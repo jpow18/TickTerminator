@@ -6,17 +6,33 @@ from PIL import Image
 
 from tickterminator.detection import Detection, suppress_duplicates
 from tickterminator.detectors import Detector
-from tickterminator.images import find_images, load_image
+from tickterminator.geo import CameraPose, GeoPoint
 from tickterminator.pests import Pest
+from tickterminator.photos import Photo, find_photos, load_photo
 from tickterminator.tiling import TilingConfig, iter_tiles
 
 DUPLICATE_IOU_THRESHOLD = 0.5
 
 
 @dataclass(frozen=True)
-class ImageResult:
-    image_path: Path
-    detections: list[Detection]
+class ScanConfig:
+    pests: Sequence[Pest]
+    tiling: TilingConfig = TilingConfig()
+    fallback_altitude_m: float | None = None
+
+
+@dataclass(frozen=True)
+class Finding:
+    detection: Detection
+    location: GeoPoint | None
+
+
+@dataclass(frozen=True)
+class PhotoResult:
+    path: Path
+    size: tuple[int, int]
+    pose: CameraPose | None
+    findings: list[Finding]
 
 
 def scan_image(
@@ -33,11 +49,28 @@ def scan_image(
     return suppress_duplicates(detections, DUPLICATE_IOU_THRESHOLD)
 
 
-def scan_folder(
-    folder: Path,
-    detector: Detector,
-    pests: Sequence[Pest],
-    tiling: TilingConfig,
-) -> Iterator[ImageResult]:
-    for path in find_images(folder):
-        yield ImageResult(path, scan_image(load_image(path), detector, pests, tiling))
+def scan_photo(photo: Photo, detector: Detector, config: ScanConfig) -> PhotoResult:
+    detections = scan_image(photo.image, detector, config.pests, config.tiling)
+    return PhotoResult(
+        photo.path,
+        photo.image.size,
+        photo.pose,
+        [Finding(detection, locate(detection, photo)) for detection in detections],
+    )
+
+
+def locate(detection: Detection, photo: Photo) -> GeoPoint | None:
+    if photo.pose is None:
+        return None
+    return photo.pose.locate(*detection.box.center, *photo.image.size)
+
+
+def scan_paths(
+    paths: Sequence[Path], detector: Detector, config: ScanConfig
+) -> Iterator[PhotoResult]:
+    for path in paths:
+        yield scan_photo(load_photo(path, config.fallback_altitude_m), detector, config)
+
+
+def scan_folder(folder: Path, detector: Detector, config: ScanConfig) -> Iterator[PhotoResult]:
+    return scan_paths(find_photos(folder), detector, config)

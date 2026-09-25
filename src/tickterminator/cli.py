@@ -1,13 +1,16 @@
 import argparse
 import sys
-from collections.abc import Iterator, Sequence
+from collections.abc import Iterable, Iterator, Sequence
 from pathlib import Path
 
 from tickterminator.detectors import DetectorKind
 from tickterminator.pests import Pest
 from tickterminator.reports import ReportFormat
-from tickterminator.scan import ImageResult, scan_folder
+from tickterminator.scan import PhotoResult, ScanConfig, scan_folder
+from tickterminator.survey import DEFAULT_SECTOR_SIZE_M, Survey
 from tickterminator.tiling import TilingConfig
+
+DEFAULT_OUTPUTS = [Path("detections.csv"), Path("report.html")]
 
 
 def parse_pests(value: str) -> list[Pest]:
@@ -15,14 +18,6 @@ def parse_pests(value: str) -> list[Pest]:
         return [Pest.parse(name) for name in value.split(",") if name.strip()]
     except ValueError as error:
         raise argparse.ArgumentTypeError(str(error)) from None
-
-
-def parse_report_format(output: Path) -> ReportFormat:
-    try:
-        return ReportFormat(output.suffix.lstrip(".").lower())
-    except ValueError:
-        choices = ", ".join(f".{report_format.value}" for report_format in ReportFormat)
-        raise ValueError(f"Unknown output type '{output}'. Use: {choices}") from None
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -41,7 +36,13 @@ def build_parser() -> argparse.ArgumentParser:
         default=list(Pest),
         help="Comma-separated pests to find. Default: all.",
     )
-    scan.add_argument("--output", type=Path, default=Path("detections.csv"))
+    scan.add_argument(
+        "--output",
+        type=Path,
+        action="append",
+        help="Report file. The extension sets the format: .csv, .geojson or .html. "
+        "Use more than once for more reports. Default: detections.csv and report.html.",
+    )
     scan.add_argument(
         "--detector",
         type=str.upper,
@@ -51,6 +52,17 @@ def build_parser() -> argparse.ArgumentParser:
     scan.add_argument("--threshold", type=float, default=0.2, help="Minimum score, 0 to 1.")
     scan.add_argument("--tile-size", type=int, default=TilingConfig.tile_size)
     scan.add_argument("--overlap", type=int, default=TilingConfig.overlap)
+    scan.add_argument(
+        "--altitude",
+        type=float,
+        help="Flight height above the ground in meters. Used when photos do not record it.",
+    )
+    scan.add_argument(
+        "--sector-size",
+        type=float,
+        default=DEFAULT_SECTOR_SIZE_M,
+        help="Sector width in meters.",
+    )
     return parser
 
 
@@ -62,22 +74,41 @@ def list_pests() -> None:
 def scan(args: argparse.Namespace, parser: argparse.ArgumentParser) -> None:
     if not args.folder.is_dir():
         parser.error(f"Folder not found: {args.folder}")
+    outputs = args.output or DEFAULT_OUTPUTS
     try:
-        report_format = parse_report_format(args.output)
-        tiling = TilingConfig(args.tile_size, args.overlap)
+        report_formats = [ReportFormat.for_path(output) for output in outputs]
+        config = ScanConfig(
+            pests=args.pests,
+            tiling=TilingConfig(args.tile_size, args.overlap),
+            fallback_altitude_m=args.altitude,
+        )
         detector = DetectorKind[args.detector].create(score_threshold=args.threshold)
     except (ValueError, ImportError) as error:
         parser.error(str(error))
 
-    results = scan_folder(args.folder, detector, args.pests, tiling)
-    report_format.write(with_progress(results), args.output)
-    print(f"Report: {args.output}", file=sys.stderr)
+    results = list(with_progress(scan_folder(args.folder, detector, config)))
+    survey = Survey.from_results(results, args.sector_size)
+    for report_format, output in zip(report_formats, outputs, strict=True):
+        report_format.write(survey, output)
+        print(f"Report: {output}", file=sys.stderr)
+    warn_if_not_located(results)
 
 
-def with_progress(results: Iterator[ImageResult]) -> Iterator[ImageResult]:
+def with_progress(results: Iterable[PhotoResult]) -> Iterator[PhotoResult]:
     for result in results:
-        print(f"{result.image_path}: {len(result.detections)} detections", file=sys.stderr)
+        print(f"{result.path}: {len(result.findings)} findings", file=sys.stderr)
         yield result
+
+
+def warn_if_not_located(results: Sequence[PhotoResult]) -> None:
+    missing = sum(1 for result in results if result.pose is None)
+    if missing:
+        print(
+            f"Note: {missing} photos have no usable position data (GPS, altitude, "
+            "35 mm focal length, camera pointing down). Their findings are not on the map. "
+            "If the photos do not record altitude, use --altitude.",
+            file=sys.stderr,
+        )
 
 
 def main(argv: Sequence[str] | None = None) -> None:

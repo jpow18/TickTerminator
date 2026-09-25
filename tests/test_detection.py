@@ -31,3 +31,7 @@ def test_suppress_duplicates_keeps_different_pests():
     tent = Detection(Pest.TENT_CATERPILLAR, 0.3, Box(0, 0, 10, 10))
     webworm = Detection(Pest.FALL_WEBWORM, 0.8, Box(0, 0, 10, 10))
     assert len(suppress_duplicates([tent, webworm], iou_threshold=0.5)) == 2
+
+
+def test_expanded_adds_fraction_on_each_side():
+    assert Box(10, 10, 20, 30).expanded(0.5) == Box(5, 0, 25, 40)
