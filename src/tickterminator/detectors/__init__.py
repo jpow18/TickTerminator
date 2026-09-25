@@ -19,8 +19,12 @@ class DetectorKind(Enum):
     """Available detectors. The value is the import path, so heavy dependencies load lazily."""
 
     OWLV2 = "tickterminator.detectors.owlv2:Owlv2Detector"
+    TRAINED = "tickterminator.detectors.trained:TrainedDetector"
 
     def create(self, **options: Any) -> Detector:
+        """Options that are None use the detector default."""
         module_name, class_name = self.value.split(":")
         detector_class = getattr(import_module(module_name), class_name)
-        return detector_class(**options)
+        return detector_class(
+            **{name: value for name, value in options.items() if value is not None}
+        )

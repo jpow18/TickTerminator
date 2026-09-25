@@ -6,7 +6,7 @@ Fly a drone over a forest, orchard or nursery. Give the photos to TickTerminator
 
 The first target is the **eastern tent caterpillar**. Its silk tents are large and easy to see from the air. Ticks are too small for a drone camera, so they are a future target for a different camera setup.
 
-> **Status:** early prototype. The detector is zero-shot: it finds pests from text descriptions and needs no training data. Results will have errors. Always check a detection before you act on it.
+> **Status:** early prototype. The default detector is zero-shot: it finds pests from text descriptions and needs no training data. Results will have errors. Always check a finding before you act on it. For better results, [train a model](#train-a-model) on your own labeled photos.
 
 ## Install
 
@@ -15,10 +15,10 @@ Requires Python 3.10 or later.
 ```bash
 git clone https://github.com/jpow18/TickTerminator.git
 cd TickTerminator
-pip install '.[zero-shot]'
+pip install '.[ml]'
 ```
 
-The `zero-shot` extra installs PyTorch and Hugging Face Transformers. The first scan downloads the OWLv2 model (about 600 MB).
+The `ml` extra installs PyTorch and Hugging Face Transformers. The first scan downloads the OWLv2 model (about 600 MB).
 
 ## Use
 
@@ -37,6 +37,7 @@ The file extension of `--output` sets the format. Use `--output` more than once 
 | `.html` | Map with a marker for each finding, sector outlines, and a table with a close-up photo of each finding. Open it in a web browser. |
 | `.csv` | One row for each finding. Open it in a spreadsheet. |
 | `.geojson` | Findings as map points. Open it in QGIS, Google Earth Pro or geojson.io. |
+| `.json` | Findings as COCO pre-labels, to correct and use for training. See [Train a model](#train-a-model). |
 
 Example CSV row:
 
@@ -63,12 +64,14 @@ The flight area is divided into square sectors (default 50 m, set with `--sector
 | Option | Default | Description |
 |---|---|---|
 | `--pests` | all | Comma-separated pest names. |
-| `--threshold` | 0.2 | Minimum score, 0 to 1. Increase it to get fewer false detections. |
+| `--threshold` | 0.2 (OWLv2), 0.5 (trained) | Minimum score, 0 to 1. Increase it to get fewer false detections. |
+| `--detector` | `owlv2` | `owlv2` finds pests from text prompts. `trained` uses a model from `tickterminator train`. |
+| `--model` | – | Model folder for `--detector trained`. |
 | `--output` | `detections.csv`, `report.html` | Report file. Use more than once. |
 | `--altitude` | from photo | Flight height above the ground, in meters. |
 | `--sector-size` | 50 | Sector width, in meters. |
 | `--tile-size` | 1024 | Large photos are cut into tiles of this size, so small targets stay visible. |
-| `--overlap` | 128 | Tile overlap in pixels, so targets on a tile edge are not lost. |
+| `--overlap` | tile size / 8 | Tile overlap in pixels, so targets on a tile edge are not lost. |
 
 ## How it works
 
@@ -80,12 +83,34 @@ The flight area is divided into square sectors (default 50 m, set with `--sector
 6. Calculate the ground position and sector of each finding.
 7. Write the reports.
 
+## Train a model
+
+The zero-shot detector is a good start, but a model trained on your own photos is more accurate. The steps:
+
+1. **Make pre-labels.** Scan the photos and write a COCO file:
+   ```bash
+   tickterminator scan ./flight_photos --pests tent_caterpillar --output prelabels.json
+   ```
+2. **Correct the labels.** Import the photos and `prelabels.json` into [CVAT](https://www.cvat.ai/) or [Label Studio](https://labelstud.io/) as a COCO dataset. Delete the wrong boxes, add the missing ones, then export as COCO. The category names must stay as the pest names (for example `tent_caterpillar`).
+3. **Train.**
+   ```bash
+   tickterminator train labels.json --images ./flight_photos --output models/tents-v1
+   ```
+   Training starts from RT-DETR v2 (Apache-2.0 license) and uses the same tiles as the scanner. A GPU makes it much faster. Options: `--epochs` (30), `--batch-size` (4), `--learning-rate` (0.0001), `--base-model`.
+4. **Scan with the trained model.**
+   ```bash
+   tickterminator scan ./new_flight --detector trained --model models/tents-v1
+   ```
+
+Keep some labeled photos out of training, and scan them to check the model. A few hundred labeled tents is a good start.
+
 ## Roadmap
 
 - [x] **M0:** package, tests, CI
 - [x] **M1:** `scan` command with a zero-shot detector and a CSV report
 - [x] **M2:** GPS positions from photo metadata, map sectors, HTML map report
-- [ ] **M3:** labeled tent caterpillar dataset and a fine-tuned model
+- [x] **M3:** pre-labels, training command and trained detector
+- [ ] **M3b:** a public labeled tent caterpillar dataset and a published model
 - [ ] **M4:** real-time analysis on the drone or an edge computer
 - [ ] **M5:** more pests, and a phone app to count ticks
 

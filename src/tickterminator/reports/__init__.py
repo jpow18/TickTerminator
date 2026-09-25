@@ -2,6 +2,7 @@ from collections.abc import Callable
 from enum import Enum
 from pathlib import Path
 
+from tickterminator.reports.coco_report import write_coco
 from tickterminator.reports.csv_report import write_csv
 from tickterminator.reports.geojson_report import write_geojson
 from tickterminator.reports.html_report import write_html
@@ -16,6 +17,7 @@ class ReportFormat(Enum):
     CSV = ("csv", write_csv)
     GEOJSON = ("geojson", write_geojson)
     HTML = ("html", write_html)
+    COCO = ("json", write_coco)
 
     def __init__(self, extension: str, writer: ReportWriter) -> None:
         self.extension = extension

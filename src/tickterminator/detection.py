@@ -20,6 +20,9 @@ class Box:
     def center(self) -> tuple[float, float]:
         return (self.x_min + self.x_max) / 2, (self.y_min + self.y_max) / 2
 
+    def contains(self, x: float, y: float) -> bool:
+        return self.x_min <= x < self.x_max and self.y_min <= y < self.y_max
+
     def expanded(self, fraction: float) -> "Box":
         """Add `fraction` of the box width and height on each side."""
         dx = (self.x_max - self.x_min) * fraction

@@ -1,7 +1,9 @@
 from collections.abc import Iterator
-from dataclasses import dataclass
+from dataclasses import astuple, dataclass
 
 from PIL import Image
+
+from tickterminator.detection import Box
 
 
 @dataclass(frozen=True)
@@ -33,10 +35,14 @@ def tile_starts(length: int, tile_size: int, overlap: int) -> list[int]:
     return [*range(0, length - tile_size, stride), length - tile_size]
 
 
+def tile_regions(width: int, height: int, config: TilingConfig) -> list[Box]:
+    return [
+        Box(x, y, min(x + config.tile_size, width), min(y + config.tile_size, height))
+        for y in tile_starts(height, config.tile_size, config.overlap)
+        for x in tile_starts(width, config.tile_size, config.overlap)
+    ]
+
+
 def iter_tiles(image: Image.Image, config: TilingConfig) -> Iterator[Tile]:
-    width, height = image.size
-    for y in tile_starts(height, config.tile_size, config.overlap):
-        for x in tile_starts(width, config.tile_size, config.overlap):
-            right = min(x + config.tile_size, width)
-            bottom = min(y + config.tile_size, height)
-            yield Tile(image.crop((x, y, right, bottom)), x, y)
+    for region in tile_regions(*image.size, config):
+        yield Tile(image.crop(astuple(region)), int(region.x_min), int(region.y_min))

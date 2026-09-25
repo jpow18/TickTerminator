@@ -5,16 +5,8 @@ from collections.abc import Sequence
 from PIL import Image
 
 from tickterminator.detection import Box, Detection
+from tickterminator.ml import default_device, torch, transformers
 from tickterminator.pests import Pest
-
-try:
-    import torch
-    from transformers import Owlv2ForObjectDetection, Owlv2Processor
-except ImportError as error:
-    raise ImportError(
-        "The OWLv2 detector needs extra packages. Install them with: "
-        "pip install 'tickterminator[zero-shot]'"
-    ) from error
 
 DEFAULT_MODEL = "google/owlv2-base-patch16-ensemble"
 
@@ -22,14 +14,16 @@ DEFAULT_MODEL = "google/owlv2-base-patch16-ensemble"
 class Owlv2Detector:
     def __init__(
         self,
-        model_name: str = DEFAULT_MODEL,
+        model: str = DEFAULT_MODEL,
         score_threshold: float = 0.2,
         device: str | None = None,
     ) -> None:
         self._score_threshold = score_threshold
-        self._device = device or ("cuda" if torch.cuda.is_available() else "cpu")
-        self._processor = Owlv2Processor.from_pretrained(model_name)
-        self._model = Owlv2ForObjectDetection.from_pretrained(model_name).to(self._device).eval()
+        self._device = device or default_device()
+        self._processor = transformers.Owlv2Processor.from_pretrained(model)
+        self._model = (
+            transformers.Owlv2ForObjectDetection.from_pretrained(model).to(self._device).eval()
+        )
 
     def detect(self, image: Image.Image, pests: Sequence[Pest]) -> list[Detection]:
         prompt_pests = [(prompt, pest) for pest in pests for prompt in pest.spec.prompts]

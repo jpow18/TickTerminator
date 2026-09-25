@@ -20,3 +20,16 @@ jobs:
       - run: uv run ruff format --check .
       - run: uv run ruff check .
       - run: uv run pytest
+
+  ml:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.12"
+      - run: uv sync --locked
+      - run: uv pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
+      - run: uv pip install scipy transformers
+      - run: uv run --no-sync python -c "import tickterminator.ml"
+      - run: uv run --no-sync pytest tests/test_training.py
