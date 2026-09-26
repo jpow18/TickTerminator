@@ -12,10 +12,13 @@ DEFAULT_MODEL = "google/owlv2-base-patch16-ensemble"
 
 
 class Owlv2Detector:
+    """`score_threshold` applies to all pests. When it is None, each pest uses its own
+    `min_score`."""
+
     def __init__(
         self,
         model: str = DEFAULT_MODEL,
-        score_threshold: float = 0.2,
+        score_threshold: float | None = None,
         device: str | None = None,
     ) -> None:
         self._score_threshold = score_threshold
@@ -36,10 +39,10 @@ class Owlv2Detector:
         # OWLv2 pads the image to a square at the bottom and right, so scale to the padded size.
         side = max(image.size)
         result = self._processor.image_processor.post_process_object_detection(
-            outputs, threshold=self._score_threshold, target_sizes=[(side, side)]
+            outputs, threshold=min(map(self._min_score, pests)), target_sizes=[(side, side)]
         )[0]
 
-        return [
+        detections = [
             Detection(
                 pest=prompt_pests[label][1],
                 score=float(score),
@@ -49,3 +52,11 @@ class Owlv2Detector:
                 result["scores"], result["labels"].tolist(), result["boxes"], strict=True
             )
         ]
+        return [
+            detection
+            for detection in detections
+            if detection.score >= self._min_score(detection.pest)
+        ]
+
+    def _min_score(self, pest: Pest) -> float:
+        return self._score_threshold if self._score_threshold is not None else pest.spec.min_score

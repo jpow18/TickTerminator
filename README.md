@@ -64,7 +64,7 @@ The flight area is divided into square sectors (default 50 m, set with `--sector
 | Option | Default | Description |
 |---|---|---|
 | `--pests` | all drone pests | Comma-separated pest names. See `tickterminator pests`. |
-| `--threshold` | 0.2 (OWLv2), 0.5 (trained) | Minimum score, 0 to 1. Increase it to get fewer false detections. |
+| `--threshold` | set for each pest (OWLv2), 0.5 (trained) | Minimum score, 0 to 1. Increase it to get fewer false detections. See `tickterminator evaluate`. |
 | `--detector` | `owlv2` | `owlv2` finds pests from text prompts. `trained` uses a model from `tickterminator train`. |
 | `--model` | – | Model folder for `--detector trained`. |
 | `--output` | `detections.csv`, `report.html` | Report file. Use more than once. |
