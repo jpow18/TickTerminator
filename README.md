@@ -157,6 +157,16 @@ tickterminator evaluate data/ticks/test.json --images data/ticks --detector trai
 
 The result is 3706 training photos, 878 validation photos and 681 test photos, with 5575 labels. Tick species become one category, `tick`. The dataset splits stay as they are. A photo that is in more than one dataset stays only in the test or validation split. `data/ticks/ATTRIBUTION.txt` lists the sources: CC BY 4.0 requires that you name them when you share a model or the data.
 
+Results after 5 epochs (about 5 hours on a 4-core CPU), on the test split:
+
+```
+pest                 threshold labels found correct precision recall    f1 photo f1
+tick                      0.07    836   799     681      0.85   0.81  0.83     0.98
+tick                      0.08    836   697     639      0.92   0.76  0.83     0.95
+```
+
+After a short training, all scores stay low (below 0.2), so the default threshold of 0.5 finds nothing. Use `--threshold 0.08` with this model, or train longer.
+
 Most of these photos are close-ups of one tick, not tick drag cloths. Measure the model on your own drag photos before you use it for counts.
 
 ## Scan during the flight
