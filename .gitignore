@@ -8,3 +8,4 @@ build/
 /detections.csv
 /report.html
 /data/
+/models/
