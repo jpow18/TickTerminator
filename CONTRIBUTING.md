@@ -36,7 +36,8 @@ Select the prompts and `min_score` with numbers. Label some photos (COCO format)
 tickterminator evaluate labels.json --images ./photos --pests fall_webworm \
     --prompt "white web on leaves" --prompt "silk web" --thresholds 0.02,0.05,0.1,0.2
 ```
- See [examples/pine-processionary](examples/pine-processionary) for an example. Include the results in your pull request.
+
+See [examples/pine-processionary](examples/pine-processionary) for an example. Include the results in your pull request.
 
 ## Add a detector
 
