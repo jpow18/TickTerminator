@@ -153,6 +153,12 @@ def add_detector_arguments(
         help="OWLV2 finds pests from text prompts. TRAINED uses a model from 'train'.",
     )
     parser.add_argument("--model", help="Model name or folder. Required for TRAINED.")
+    parser.add_argument(
+        "--prompt",
+        action="append",
+        help="Test a prompt for OWLV2: replaces the prompts of the one pest in --pests. "
+        "Use more than once for more prompts.",
+    )
     add_tiling_arguments(parser)
 
 
@@ -189,7 +195,7 @@ def run_scan(args: argparse.Namespace) -> None:
     require_folder(args.folder)
     reports = report_targets(args)
     config = scan_config(args)
-    detector = create_detector(args, args.threshold)
+    detector = create_detector(args, args.threshold, args.pests)
 
     results = list(with_progress(scan_folder(args.folder, detector, config)))
     write_reports(Survey.from_results(results, args.sector_size), reports)
@@ -200,7 +206,7 @@ def run_watch(args: argparse.Namespace) -> None:
     require_folder(args.folder)
     reports = report_targets(args)
     config = scan_config(args)
-    detector = create_detector(args, args.threshold)
+    detector = create_detector(args, args.threshold, args.pests)
     photos = watch_photos(args.folder, args.poll_interval, args.stop_after_idle)
     print(f"Watching {args.folder}. Stop with Ctrl+C.", file=sys.stderr)
 
@@ -231,7 +237,7 @@ def run_evaluate(args: argparse.Namespace) -> None:
     require_folder(args.images)
     photos = read_coco_labels(args.labels, args.images)
     pests = args.pests or pests_in(photos)
-    detector = create_detector(args, score_threshold=min(args.thresholds))
+    detector = create_detector(args, min(args.thresholds), pests)
     results = detect_all(photos, detector, pests, tiling_config(args))
     print(f"{len(photos)} photos, {sum(len(photo.labels) for photo in photos)} labels")
     print(SCORE_HEADER)
@@ -358,8 +364,24 @@ def scan_config(args: argparse.Namespace) -> ScanConfig:
     )
 
 
-def create_detector(args: argparse.Namespace, score_threshold: float | None) -> Detector:
-    return DetectorKind[args.detector].create(model=args.model, score_threshold=score_threshold)
+def create_detector(
+    args: argparse.Namespace, score_threshold: float | None, pests: Sequence[Pest]
+) -> Detector:
+    return DetectorKind[args.detector].create(
+        model=args.model,
+        score_threshold=score_threshold,
+        prompts=prompt_override(args, pests),
+    )
+
+
+def prompt_override(args: argparse.Namespace, pests: Sequence[Pest]) -> dict | None:
+    if not args.prompt:
+        return None
+    if DetectorKind[args.detector] is not DetectorKind.OWLV2:
+        raise ValueError("--prompt works only with the OWLV2 detector.")
+    if len(pests) != 1:
+        raise ValueError("--prompt needs exactly one pest in --pests.")
+    return {pests[0]: tuple(args.prompt)}
 
 
 def write_reports(survey: Survey, reports: list[tuple[ReportFormat, Path]]) -> None:

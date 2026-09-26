@@ -25,3 +25,10 @@ def test_each_pest_uses_its_own_min_score_by_default():
 def test_score_threshold_overrides_all_pests():
     detector = detector_with_threshold(0.5)
     assert {detector._min_score(pest) for pest in Pest} == {0.5}
+
+
+def test_prompts_replace_the_prompts_of_one_pest():
+    detector = detector_with_threshold(None)
+    detector._prompts = {Pest.TICK: ("black dot",)}
+    assert detector._prompts_for(Pest.TICK) == ("black dot",)
+    assert detector._prompts_for(Pest.BAGWORM) == Pest.BAGWORM.spec.prompts

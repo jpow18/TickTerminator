@@ -1,6 +1,6 @@
 """Zero-shot detector. It finds objects from text prompts, so it needs no training data."""
 
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 
 from PIL import Image
 
@@ -13,15 +13,17 @@ DEFAULT_MODEL = "google/owlv2-base-patch16-ensemble"
 
 class Owlv2Detector:
     """`score_threshold` applies to all pests. When it is None, each pest uses its own
-    `min_score`."""
+    `min_score`. `prompts` replaces the prompts of some pests, to test new prompts."""
 
     def __init__(
         self,
         model: str = DEFAULT_MODEL,
         score_threshold: float | None = None,
+        prompts: Mapping[Pest, Sequence[str]] | None = None,
         device: str | None = None,
     ) -> None:
         self._score_threshold = score_threshold
+        self._prompts = dict(prompts or {})
         self._device = device or default_device()
         self._processor = transformers.Owlv2Processor.from_pretrained(model)
         self._model = (
@@ -29,7 +31,7 @@ class Owlv2Detector:
         )
 
     def detect(self, image: Image.Image, pests: Sequence[Pest]) -> list[Detection]:
-        prompt_pests = [(prompt, pest) for pest in pests for prompt in pest.spec.prompts]
+        prompt_pests = [(prompt, pest) for pest in pests for prompt in self._prompts_for(pest)]
         prompts = [prompt for prompt, _ in prompt_pests]
 
         inputs = self._processor(text=[prompts], images=image, return_tensors="pt")
@@ -57,6 +59,9 @@ class Owlv2Detector:
             for detection in detections
             if detection.score >= self._min_score(detection.pest)
         ]
+
+    def _prompts_for(self, pest: Pest) -> Sequence[str]:
+        return self._prompts.get(pest, pest.spec.prompts)
 
     def _min_score(self, pest: Pest) -> float:
         return self._score_threshold if self._score_threshold is not None else pest.spec.min_score

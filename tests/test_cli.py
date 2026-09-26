@@ -1,10 +1,12 @@
 import csv
 
 import pytest
+from conftest import FakeDetector
 from PIL import Image
 
 from tickterminator import cli
 from tickterminator.detectors import DetectorKind
+from tickterminator.pests import Pest
 
 
 @pytest.fixture
@@ -71,3 +73,31 @@ def test_scan_skips_close_up_pests_by_default(photo_folder, tmp_path, fake_detec
     fake_detector.detect = lambda image, pests: pests_seen.append(list(pests)) or []
     cli.main(["scan", str(photo_folder), "--output", str(tmp_path / "report.csv")])
     assert "TICK" not in {pest.name for pest in pests_seen[0]}
+
+
+def test_prompt_replaces_the_prompts_of_one_pest(photo_folder, tmp_path, monkeypatch):
+    options_seen = {}
+
+    def create(self, **options):
+        options_seen.update(options)
+        return FakeDetector()
+
+    monkeypatch.setattr(DetectorKind, "create", create)
+    cli.main(
+        ["scan", str(photo_folder), "--pests", "tick", "--prompt", "black dot",
+         "--prompt", "tick", "--output", str(tmp_path / "report.csv")]
+    )  # fmt: skip
+    assert options_seen["prompts"] == {Pest.TICK: ("black dot", "tick")}
+
+
+@pytest.mark.parametrize(
+    ("arguments", "message"),
+    [
+        (["--pests", "tick,bagworm"], "exactly one pest"),
+        (["--pests", "tick", "--detector", "trained"], "only with the OWLV2"),
+    ],
+)
+def test_prompt_needs_one_pest_and_owlv2(photo_folder, capsys, arguments, message):
+    with pytest.raises(SystemExit):
+        cli.main(["scan", str(photo_folder), "--prompt", "black dot", *arguments])
+    assert message in capsys.readouterr().err
