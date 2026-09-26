@@ -22,6 +22,8 @@ The `ml` extra installs PyTorch and Hugging Face Transformers. The first scan do
 
 ## Use
 
+To plan a flight that gives good photos, see the [flight guide](docs/flight-guide.md).
+
 ```bash
 tickterminator pests                     # list the pests you can find
 tickterminator scan ./flight_photos      # find all pests, write detections.csv and report.html
