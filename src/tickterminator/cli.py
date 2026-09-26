@@ -161,7 +161,7 @@ def announce_findings(result: PhotoResult) -> None:
 
 
 def run_train(args: argparse.Namespace) -> None:
-    from tickterminator.training.dataset import read_coco_labels
+    from tickterminator.labels import read_coco_labels
     from tickterminator.training.train import TrainingConfig, train
 
     require_folder(args.images)

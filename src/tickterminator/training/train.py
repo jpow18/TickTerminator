@@ -5,11 +5,12 @@ from pathlib import Path
 from statistics import mean
 
 from tickterminator import coco
+from tickterminator.labels import LabeledPhoto
 from tickterminator.ml import default_device, torch, transformers
 from tickterminator.pests import Pest
 from tickterminator.photos import load_image
 from tickterminator.tiling import TilingConfig
-from tickterminator.training.dataset import LabeledPhoto, TrainingTile, pests_in, training_tiles
+from tickterminator.training.dataset import TrainingTile, pests_in, training_tiles
 
 DEFAULT_BASE_MODEL = "PekingU/rtdetr_v2_r18vd"
 

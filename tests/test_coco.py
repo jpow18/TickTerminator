@@ -4,11 +4,11 @@ from conftest import save_drone_photo
 
 from tickterminator.coco import box_from_coco, coco_bbox
 from tickterminator.detection import Box
+from tickterminator.labels import read_coco_labels
 from tickterminator.pests import Pest
 from tickterminator.reports import ReportFormat
 from tickterminator.scan import ScanConfig, scan_folder
 from tickterminator.survey import Survey
-from tickterminator.training.dataset import read_coco_labels
 
 
 def test_bbox_conversion_round_trips():
