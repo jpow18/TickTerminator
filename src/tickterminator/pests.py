@@ -33,6 +33,11 @@ class Pest(Enum):
         View.AERIAL,
         ("brown cone-shaped bags hanging from evergreen branches", "brown dead patch on a conifer"),
     )
+    PINE_PROCESSIONARY = PestSpec(
+        "Pine processionary moth",
+        View.AERIAL,
+        ("white silk nest at the tip of a pine branch", "silk caterpillar nest in a pine tree"),
+    )
     DEFOLIATION = PestSpec(
         "Defoliation",
         View.AERIAL,
