@@ -109,3 +109,21 @@ def test_training_can_continue_from_an_epoch_checkpoint(tiny_base_model, labeled
          "--base-model", str(first / "checkpoints" / "epoch-2"), "--epochs", "1", *common]
     )  # fmt: skip
     assert (second / "model.safetensors").exists()
+
+
+def test_training_with_validation_saves_the_best_threshold(
+    tiny_base_model, labeled_photos, tmp_path, capsys
+):
+    labels, photos = labeled_photos
+    model = tmp_path / "model"
+
+    cli.main(
+        ["train", str(labels), "--images", str(photos), "--output", str(model),
+         "--validation", str(labels), "--base-model", str(tiny_base_model), "--epochs", "1",
+         "--batch-size", "2", "--tile-size", "64", "--overlap", "0"]
+    )  # fmt: skip
+
+    thresholds = json.loads((model / "thresholds.json").read_text())
+    assert list(thresholds) == ["tent_caterpillar"]
+    assert 0 < thresholds["tent_caterpillar"] < 1
+    assert "Saved thresholds" in capsys.readouterr().out

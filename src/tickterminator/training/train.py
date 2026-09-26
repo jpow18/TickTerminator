@@ -5,6 +5,8 @@ from pathlib import Path
 from statistics import mean
 
 from tickterminator import coco
+from tickterminator.detectors.trained import TrainedDetector, save_thresholds
+from tickterminator.evaluation import PestScore, best_threshold, detect_all
 from tickterminator.labels import LabeledPhoto, pests_in
 from tickterminator.ml import default_device, torch, transformers
 from tickterminator.pests import Pest
@@ -13,6 +15,10 @@ from tickterminator.tiling import TilingConfig
 from tickterminator.training.dataset import TrainingTile, training_tiles
 
 DEFAULT_BASE_MODEL = "PekingU/rtdetr_v2_r18vd"
+NEW_CLASS_PRIOR = 0.01
+"""Start score of the new class heads, as in the pretrained model. With the default of 0.5,
+all queries start as detections, and the scores stay low after training."""
+CANDIDATE_THRESHOLDS = [step / 100 for step in range(1, 100)]
 
 
 @dataclass(frozen=True)
@@ -35,8 +41,10 @@ def train(
     config: TrainingConfig,
     on_epoch: EpochCallback = lambda epoch, loss: None,
     device: str | None = None,
-) -> None:
-    """Fine-tune `config.base_model` and save the model to `output_dir`."""
+    validation: list[LabeledPhoto] | None = None,
+) -> list[PestScore]:
+    """Fine-tune `config.base_model` and save the model to `output_dir`. With `validation`
+    photos, also save the threshold with the best F1 for each pest, and return its scores."""
     pests = pests_in(photos)
     if not pests:
         raise ValueError("The labels contain no boxes.")
@@ -51,6 +59,7 @@ def train(
         id2label={index: pest.name.lower() for pest, index in label_ids.items()},
         label2id={pest.name.lower(): index for pest, index in label_ids.items()},
         ignore_mismatched_sizes=True,
+        initializer_bias_prior_prob=NEW_CLASS_PRIOR,
     ).to(device)
     optimizer = torch.optim.AdamW(model.parameters(), lr=config.learning_rate)
     tiles = training_tiles(photos, config.tiling, rng)
@@ -66,6 +75,23 @@ def train(
         on_epoch(epoch, mean(losses))
 
     save_model(model, processor, output_dir)
+    if not validation:
+        return []
+    return select_thresholds(output_dir, validation, pests, config.tiling, device)
+
+
+def select_thresholds(
+    model_dir: Path,
+    photos: list[LabeledPhoto],
+    pests: list[Pest],
+    tiling: TilingConfig,
+    device: str,
+) -> list[PestScore]:
+    detector = TrainedDetector(str(model_dir), min(CANDIDATE_THRESHOLDS), device)
+    results = detect_all(photos, detector, pests, tiling)
+    scores = [best_threshold(results, pest, CANDIDATE_THRESHOLDS) for pest in pests]
+    save_thresholds(model_dir, {result.pest: result.min_score for result in scores})
+    return scores
 
 
 def checkpoint_dir(output_dir: Path, epoch: int) -> Path:

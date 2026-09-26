@@ -10,6 +10,7 @@ from tickterminator.detectors import DetectorKind
 from tickterminator.evaluation import (
     Counts,
     PhotoDetections,
+    best_threshold,
     match_boxes,
     match_presence,
     score,
@@ -113,3 +114,15 @@ def test_evaluate_rejects_bad_thresholds(tmp_path, capsys):
     with pytest.raises(SystemExit):
         cli.main(["evaluate", "labels.json", "--images", str(tmp_path), "--thresholds", "high"])
     assert "Not a list of numbers" in capsys.readouterr().err
+
+
+def test_best_threshold_drops_low_scores_that_are_wrong():
+    label = Label(TENT, Box(0, 0, 10, 10))
+    photo = LabeledPhoto(Path("a.jpg"), (100, 100), [label])
+    detections = [detection(Box(0, 0, 10, 10), 0.3), detection(Box(50, 50, 60, 60), 0.1)]
+    results = [PhotoDetections(photo, detections)]
+
+    best = best_threshold(results, TENT, [0.05, 0.2, 0.5])
+
+    assert best.min_score == 0.2
+    assert best.boxes.f1 == 1.0

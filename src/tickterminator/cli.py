@@ -130,6 +130,12 @@ def build_parser() -> argparse.ArgumentParser:
     train.add_argument("labels", type=Path, help="COCO file with pest names as categories.")
     train.add_argument("--images", type=Path, required=True, help="Folder of the labeled photos.")
     train.add_argument("--output", type=Path, required=True, help="Folder for the trained model.")
+    train.add_argument(
+        "--validation",
+        type=Path,
+        help="COCO file of photos kept out of training, in the --images folder. Selects and "
+        "saves the threshold with the best F1.",
+    )
     train.add_argument("--base-model", help="Hugging Face model to start from.")
     train.add_argument("--epochs", type=int)
     train.add_argument("--batch-size", type=int)
@@ -375,7 +381,13 @@ def run_train(args: argparse.Namespace) -> None:
         **{name: value for name, value in options.items() if value is not None},
     )
     photos = read_coco_labels(args.labels, args.images)
-    train(photos, args.output, config, on_epoch=print_epoch)
+    validation = read_coco_labels(args.validation, args.images) if args.validation else None
+    scores = train(photos, args.output, config, on_epoch=print_epoch, validation=validation)
+    if scores:
+        print("Saved thresholds, measured on the validation photos:")
+        print(SCORE_HEADER)
+        for result in scores:
+            print(format_score(result))
     print(f"Model: {args.output}. Use it with: --detector trained --model {args.output}")
 
 

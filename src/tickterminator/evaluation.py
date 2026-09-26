@@ -90,6 +90,19 @@ def score(
     return PestScore(pest, min_score, boxes, photos)
 
 
+def best_threshold(
+    results: Sequence[PhotoDetections],
+    pest: Pest,
+    candidates: Sequence[float],
+    iou_threshold: float = DEFAULT_IOU_THRESHOLD,
+) -> PestScore:
+    """The candidate minimum score with the highest box F1."""
+    return max(
+        (score(results, pest, candidate, iou_threshold) for candidate in candidates),
+        key=lambda result: result.boxes.f1,
+    )
+
+
 def match_boxes(
     detections: Sequence[Detection], labels: Sequence[Label], iou_threshold: float
 ) -> Counts:
