@@ -7,6 +7,14 @@ from tickterminator.detectors import Detector, DetectorKind
 from tickterminator.evaluation import DEFAULT_IOU_THRESHOLD, PestScore, detect_all, score
 from tickterminator.labels import pests_in, read_coco_labels
 from tickterminator.pests import Pest, View
+from tickterminator.planning import (
+    DEFAULT_OVERLAP,
+    DEFAULT_PIXELS_ACROSS,
+    MAX_LEGAL_ALTITUDE_M,
+    Camera,
+    CameraModel,
+    plan_flight,
+)
 from tickterminator.reports import ReportFormat
 from tickterminator.scan import PhotoResult, ScanConfig, scan_folder, scan_paths
 from tickterminator.survey import DEFAULT_SECTOR_SIZE_M, Survey
@@ -74,6 +82,31 @@ def build_parser() -> argparse.ArgumentParser:
         help="Minimum overlap (IoU) between a detection and a label to count as found.",
     )
     evaluate.set_defaults(handler=run_evaluate)
+
+    plan = commands.add_parser("plan", help="Calculate how high to fly for a survey.")
+    plan.add_argument(
+        "--target-cm", type=float, required=True, help="Smallest target to find, in cm."
+    )
+    plan.add_argument("--camera", type=str.upper, choices=[model.name for model in CameraModel])
+    plan.add_argument(
+        "--focal-length", type=float, help="35 mm equivalent focal length, for other cameras."
+    )
+    plan.add_argument(
+        "--image-size", type=parse_image_size, help="WIDTHxHEIGHT in pixels, for other cameras."
+    )
+    plan.add_argument(
+        "--pixels-across",
+        type=int,
+        default=DEFAULT_PIXELS_ACROSS,
+        help="Pixels across the smallest target. More pixels give better detection.",
+    )
+    plan.add_argument(
+        "--photo-overlap",
+        type=float,
+        default=DEFAULT_OVERLAP,
+        help="Overlap between neighboring photos, 0 to 1.",
+    )
+    plan.set_defaults(handler=run_plan)
 
     train = commands.add_parser("train", help="Fine-tune a detector on labeled photos.")
     train.add_argument("labels", type=Path, help="COCO file with pest names as categories.")
@@ -232,6 +265,51 @@ def parse_thresholds(value: str) -> list[float]:
     if not thresholds:
         raise argparse.ArgumentTypeError("Give at least one threshold.")
     return thresholds
+
+
+def run_plan(args: argparse.Namespace) -> None:
+    flight = plan_flight(
+        selected_camera(args), args.target_cm / 100, args.pixels_across, args.photo_overlap
+    )
+    camera = flight.camera
+    width_m, height_m = flight.footprint_m
+    print(
+        f"Camera: {camera.name} ({camera.focal_length_35mm:g} mm, "
+        f"{camera.width_px} x {camera.height_px} pixels)"
+    )
+    print(f"Fly at most {flight.altitude_m:.0f} m above the tree tops.")
+    print(
+        f"Ground resolution: {flight.meters_per_pixel * 100:.2f} cm per pixel. "
+        f"A {args.target_cm:g} cm target is {args.pixels_across} pixels wide."
+    )
+    print(f"Each photo covers {width_m:.0f} x {height_m:.0f} m.")
+    print(
+        f"With {args.photo_overlap:.0%} overlap: take a photo every "
+        f"{flight.photo_spacing_m:.1f} m, and fly lines {flight.line_spacing_m:.1f} m apart."
+    )
+    if flight.exceeds_legal_altitude:
+        print(
+            f"Warning: the limit for small drones is usually {MAX_LEGAL_ALTITUDE_M:.0f} m. "
+            "Fly lower."
+        )
+
+
+def selected_camera(args: argparse.Namespace) -> Camera:
+    if args.camera:
+        return CameraModel[args.camera].camera
+    if args.focal_length and args.image_size:
+        return Camera("custom camera", args.focal_length, *args.image_size)
+    raise ValueError("Give --camera, or --focal-length and --image-size.")
+
+
+def parse_image_size(value: str) -> tuple[int, int]:
+    try:
+        width, height = (int(part) for part in value.lower().split("x"))
+    except ValueError:
+        raise argparse.ArgumentTypeError(
+            f"Use WIDTHxHEIGHT, for example 5472x3648: '{value}'"
+        ) from None
+    return width, height
 
 
 def run_train(args: argparse.Namespace) -> None:
