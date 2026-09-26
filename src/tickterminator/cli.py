@@ -4,6 +4,8 @@ from collections.abc import Iterable, Iterator, Sequence
 from pathlib import Path
 
 from tickterminator.detectors import Detector, DetectorKind
+from tickterminator.evaluation import DEFAULT_IOU_THRESHOLD, PestScore, detect_all, score
+from tickterminator.labels import pests_in, read_coco_labels
 from tickterminator.pests import Pest, View
 from tickterminator.reports import ReportFormat
 from tickterminator.scan import PhotoResult, ScanConfig, scan_folder, scan_paths
@@ -12,6 +14,7 @@ from tickterminator.tiling import TilingConfig
 from tickterminator.watch import watch_photos
 
 DEFAULT_OUTPUTS = [Path("detections.csv"), Path("report.html")]
+DEFAULT_EVALUATION_THRESHOLDS = [0.1, 0.2, 0.3, 0.5]
 
 
 def parse_pests(value: str) -> list[Pest]:
@@ -52,6 +55,26 @@ def build_parser() -> argparse.ArgumentParser:
     add_report_arguments(watch)
     watch.set_defaults(handler=run_watch)
 
+    evaluate = commands.add_parser(
+        "evaluate", help="Measure a detector against labeled photos (a COCO file)."
+    )
+    evaluate.add_argument("labels", type=Path, help="COCO file with pest names as categories.")
+    evaluate.add_argument("--images", type=Path, required=True, help="Folder of the photos.")
+    add_detector_arguments(evaluate, default_pests=None)
+    evaluate.add_argument(
+        "--thresholds",
+        type=parse_thresholds,
+        default=DEFAULT_EVALUATION_THRESHOLDS,
+        help="Comma-separated minimum scores to compare. Default: 0.1,0.2,0.3,0.5.",
+    )
+    evaluate.add_argument(
+        "--iou",
+        type=float,
+        default=DEFAULT_IOU_THRESHOLD,
+        help="Minimum overlap (IoU) between a detection and a label to count as found.",
+    )
+    evaluate.set_defaults(handler=run_evaluate)
+
     train = commands.add_parser("train", help="Fine-tune a detector on labeled photos.")
     train.add_argument("labels", type=Path, help="COCO file with pest names as categories.")
     train.add_argument("--images", type=Path, required=True, help="Folder of the labeled photos.")
@@ -66,11 +89,28 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def add_detection_arguments(parser: argparse.ArgumentParser) -> None:
+    add_detector_arguments(parser, default_pests=Pest.for_view(View.AERIAL))
+    parser.add_argument("--threshold", type=float, help="Minimum score, 0 to 1.")
+    parser.add_argument(
+        "--altitude",
+        type=float,
+        help="Flight height above the ground in meters. Used when photos do not record it.",
+    )
+
+
+def add_detector_arguments(
+    parser: argparse.ArgumentParser, default_pests: list[Pest] | None
+) -> None:
     parser.add_argument(
         "--pests",
         type=parse_pests,
-        default=Pest.for_view(View.AERIAL),
-        help="Comma-separated pests to find. Default: all pests seen from a drone.",
+        default=default_pests,
+        help="Comma-separated pests to find. "
+        + (
+            "Default: all pests seen from a drone."
+            if default_pests
+            else "Default: the pests in the labels."
+        ),
     )
     parser.add_argument(
         "--detector",
@@ -80,12 +120,6 @@ def add_detection_arguments(parser: argparse.ArgumentParser) -> None:
         help="OWLV2 finds pests from text prompts. TRAINED uses a model from 'train'.",
     )
     parser.add_argument("--model", help="Model name or folder. Required for TRAINED.")
-    parser.add_argument("--threshold", type=float, help="Minimum score, 0 to 1.")
-    parser.add_argument(
-        "--altitude",
-        type=float,
-        help="Flight height above the ground in meters. Used when photos do not record it.",
-    )
     add_tiling_arguments(parser)
 
 
@@ -122,7 +156,7 @@ def run_scan(args: argparse.Namespace) -> None:
     require_folder(args.folder)
     reports = report_targets(args)
     config = scan_config(args)
-    detector = create_detector(args)
+    detector = create_detector(args, args.threshold)
 
     results = list(with_progress(scan_folder(args.folder, detector, config)))
     write_reports(Survey.from_results(results, args.sector_size), reports)
@@ -133,7 +167,7 @@ def run_watch(args: argparse.Namespace) -> None:
     require_folder(args.folder)
     reports = report_targets(args)
     config = scan_config(args)
-    detector = create_detector(args)
+    detector = create_detector(args, args.threshold)
     photos = watch_photos(args.folder, args.poll_interval, args.stop_after_idle)
     print(f"Watching {args.folder}. Stop with Ctrl+C.", file=sys.stderr)
 
@@ -160,8 +194,47 @@ def announce_findings(result: PhotoResult) -> None:
         print(f"FOUND {detection.pest.name.lower()} ({detection.score:.2f}) at {where}")
 
 
+def run_evaluate(args: argparse.Namespace) -> None:
+    require_folder(args.images)
+    photos = read_coco_labels(args.labels, args.images)
+    pests = args.pests or pests_in(photos)
+    detector = create_detector(args, score_threshold=min(args.thresholds))
+    results = detect_all(photos, detector, pests, tiling_config(args))
+    print(f"{len(photos)} photos, {sum(len(photo.labels) for photo in photos)} labels")
+    print(SCORE_HEADER)
+    for pest in pests:
+        for threshold in args.thresholds:
+            print(format_score(score(results, pest, threshold, args.iou)))
+
+
+SCORE_HEADER = (
+    f"{'pest':<20} {'threshold':>9} {'labels':>6} {'found':>5} {'correct':>7} "
+    f"{'precision':>9} {'recall':>6} {'f1':>5} {'photo f1':>8}"
+)
+
+
+def format_score(result: PestScore) -> str:
+    boxes = result.boxes
+    return (
+        f"{result.pest.name.lower():<20} {result.min_score:>9.2f} "
+        f"{boxes.true_positives + boxes.false_negatives:>6} "
+        f"{boxes.true_positives + boxes.false_positives:>5} {boxes.true_positives:>7} "
+        f"{boxes.precision:>9.2f} {boxes.recall:>6.2f} {boxes.f1:>5.2f} "
+        f"{result.photos.f1:>8.2f}"
+    )
+
+
+def parse_thresholds(value: str) -> list[float]:
+    try:
+        thresholds = [float(part) for part in value.split(",") if part.strip()]
+    except ValueError:
+        raise argparse.ArgumentTypeError(f"Not a list of numbers: '{value}'") from None
+    if not thresholds:
+        raise argparse.ArgumentTypeError("Give at least one threshold.")
+    return thresholds
+
+
 def run_train(args: argparse.Namespace) -> None:
-    from tickterminator.labels import read_coco_labels
     from tickterminator.training.train import TrainingConfig, train
 
     require_folder(args.images)
@@ -207,8 +280,8 @@ def scan_config(args: argparse.Namespace) -> ScanConfig:
     )
 
 
-def create_detector(args: argparse.Namespace) -> Detector:
-    return DetectorKind[args.detector].create(model=args.model, score_threshold=args.threshold)
+def create_detector(args: argparse.Namespace, score_threshold: float | None) -> Detector:
+    return DetectorKind[args.detector].create(model=args.model, score_threshold=score_threshold)
 
 
 def write_reports(survey: Survey, reports: list[tuple[ReportFormat, Path]]) -> None:

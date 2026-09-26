@@ -102,7 +102,29 @@ The zero-shot detector is a good start, but a model trained on your own photos i
    tickterminator scan ./new_flight --detector trained --model models/tents-v1
    ```
 
-Keep some labeled photos out of training, and scan them to check the model. A few hundred labeled tents is a good start.
+A few hundred labeled tents is a good start.
+
+## Measure a detector
+
+Keep some labeled photos out of training. Use them to measure how good a detector is:
+
+```bash
+tickterminator evaluate test_labels.json --images ./test_photos --detector trained --model models/tents-v1
+```
+
+```
+40 photos, 112 labels
+pest                 threshold labels found correct precision recall    f1 photo f1
+tent_caterpillar          0.10    112   160      98      0.61   0.88  0.72     0.93
+tent_caterpillar          0.30    112   104      91      0.88   0.81  0.84     0.95
+```
+
+- **Precision:** the part of the detections that are correct.
+- **Recall:** the part of the labeled pests that the detector found.
+- **F1:** one number that combines precision and recall. Higher is better.
+- **Photo F1:** the same, but only for the question "does this photo show the pest?".
+
+A detection is correct when it overlaps a label by 50% or more (IoU ≥ 0.5, set with `--iou`). Use the results to select `--threshold` for `scan`, and to compare prompts or models.
 
 ## Count ticks
 

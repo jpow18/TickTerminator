@@ -4,7 +4,6 @@ from pathlib import Path
 
 from tickterminator.detection import Box
 from tickterminator.labels import Label, LabeledPhoto
-from tickterminator.pests import Pest
 from tickterminator.tiling import TilingConfig, tile_regions
 
 
@@ -44,8 +43,3 @@ def training_tiles(
     labeled = [tile for tile in tiles if tile.labels]
     empty = [tile for tile in tiles if not tile.labels]
     return labeled + rng.sample(empty, min(len(empty), max(len(labeled), 1)))
-
-
-def pests_in(photos: list[LabeledPhoto]) -> list[Pest]:
-    found = {label.pest for photo in photos for label in photo.labels}
-    return [pest for pest in Pest if pest in found]

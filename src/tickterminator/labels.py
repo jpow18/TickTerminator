@@ -39,3 +39,8 @@ def read_coco_labels(annotation_file: Path, images_dir: Path) -> list[LabeledPho
         )
         for image in document["images"]
     ]
+
+
+def pests_in(photos: list[LabeledPhoto]) -> list[Pest]:
+    found = {label.pest for photo in photos for label in photo.labels}
+    return [pest for pest in Pest if pest in found]
