@@ -1,8 +1,12 @@
 import argparse
+import os
 import sys
 from collections.abc import Iterable, Iterator, Sequence
 from pathlib import Path
 
+from tickterminator.datasets import PublicDataset
+from tickterminator.datasets.merge import export_dir, merge_exports
+from tickterminator.datasets.roboflow import download_coco
 from tickterminator.detectors import Detector, DetectorKind
 from tickterminator.evaluation import DEFAULT_IOU_THRESHOLD, PestScore, detect_all, score
 from tickterminator.labels import pests_in, read_coco_labels
@@ -107,6 +111,20 @@ def build_parser() -> argparse.ArgumentParser:
         help="Overlap between neighboring photos, 0 to 1.",
     )
     plan.set_defaults(handler=run_plan)
+
+    download = commands.add_parser(
+        "download", help="Download public labeled datasets and convert them to COCO files."
+    )
+    download.add_argument(
+        "--pests", type=parse_pests, default=list(Pest), help="Comma-separated pests."
+    )
+    download.add_argument("--output", type=Path, required=True, help="Folder for the dataset.")
+    download.add_argument(
+        "--api-key",
+        default=os.environ.get("ROBOFLOW_API_KEY"),
+        help="Roboflow API key. Default: the ROBOFLOW_API_KEY environment variable.",
+    )
+    download.set_defaults(handler=run_download)
 
     train = commands.add_parser("train", help="Fine-tune a detector on labeled photos.")
     train.add_argument("labels", type=Path, help="COCO file with pest names as categories.")
@@ -316,6 +334,30 @@ def parse_image_size(value: str) -> tuple[int, int]:
             f"Use WIDTHxHEIGHT, for example 5472x3648: '{value}'"
         ) from None
     return width, height
+
+
+def run_download(args: argparse.Namespace) -> None:
+    if not args.api_key:
+        raise ValueError("Give --api-key or set ROBOFLOW_API_KEY. Get a free key at roboflow.com.")
+    datasets = PublicDataset.for_pests(args.pests)
+    if not datasets:
+        raise ValueError("No public datasets for these pests.")
+    for dataset in datasets:
+        destination = export_dir(args.output, dataset)
+        if not destination.is_dir():
+            print(f"Download {dataset.spec.url}", file=sys.stderr)
+            download_coco(dataset.spec, destination, args.api_key)
+
+    summaries = merge_exports(args.output, datasets)
+    (args.output / "ATTRIBUTION.txt").write_text(
+        "".join(f"{dataset.attribution}\n" for dataset in datasets)
+    )
+    for summary in summaries:
+        print(
+            f"{summary.split.labels_file_name}: {summary.images} photos, {summary.labels} labels, "
+            f"{summary.duplicates} duplicate photos removed"
+        )
+    print(f"Use the files with: --images {args.output}")
 
 
 def run_train(args: argparse.Namespace) -> None:

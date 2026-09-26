@@ -138,6 +138,27 @@ tickterminator scan ./drag_photos --pests tick --tile-size 512
 
 A smaller tile size makes small ticks larger for the detector. Phone photos usually have GPS, but no drone data, so the findings have no map position. The file name and the count for each photo are in the report.
 
+### Train a tick detector on public data
+
+`download` gets public labeled tick photos from [Roboflow Universe](https://universe.roboflow.com) and converts them to COCO files with the category `tick`. It needs a free [Roboflow API key](https://docs.roboflow.com/api-reference/authentication).
+
+```bash
+export ROBOFLOW_API_KEY=...
+tickterminator download --pests tick --output data/ticks
+tickterminator train data/ticks/train.json --images data/ticks --output models/ticks-v1 --tile-size 640
+tickterminator evaluate data/ticks/test.json --images data/ticks --detector trained --model models/ticks-v1 --tile-size 640
+```
+
+| Dataset | License | Photos |
+|---|---|---|
+| [ticks-gftpi/ticks-image-detection](https://universe.roboflow.com/ticks-gftpi/ticks-image-detection/dataset/5) v5 | Public Domain | 1602 |
+| [tickcitizenscience/tick-qk4y9](https://universe.roboflow.com/tickcitizenscience/tick-qk4y9/dataset/1) v1 | CC BY 4.0 | 3258 |
+| [christopher-9mqni/tick-id-kdclh](https://universe.roboflow.com/christopher-9mqni/tick-id-kdclh/dataset/2) v2 | CC BY 4.0 | 405 |
+
+The result is 3706 training photos, 878 validation photos and 681 test photos, with 5575 labels. Tick species become one category, `tick`. The dataset splits stay as they are. A photo that is in more than one dataset stays only in the test or validation split. `data/ticks/ATTRIBUTION.txt` lists the sources: CC BY 4.0 requires that you name them when you share a model or the data.
+
+Most of these photos are close-ups of one tick, not tick drag cloths. Measure the model on your own drag photos before you use it for counts.
+
 ## Scan during the flight
 
 `watch` scans new photos as they arrive in a folder, and prints each finding immediately:

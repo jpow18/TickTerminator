@@ -45,6 +45,10 @@ See [examples/pine-processionary](examples/pine-processionary) for an example. I
 2. Add a member to `DetectorKind` with the import path of your class.
 3. Import heavy dependencies from `tickterminator.ml`, so a missing extra gives a clear error.
 
+## Add a public dataset
+
+Add a member to `PublicDataset` in `src/tickterminator/datasets/__init__.py` with the Roboflow workspace, project, version, license and pest. Use a version without augmentation, and a license that lets others train on it (for example CC BY 4.0). Do not add a dataset that only copies photos of a dataset in the list.
+
 ## Add a report format
 
 Write a writer function in a new module in `src/tickterminator/reports/`, then add a member to `ReportFormat` with the file extension and the writer.
