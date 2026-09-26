@@ -90,3 +90,22 @@ def test_train_then_scan_with_trained_model(tiny_base_model, labeled_photos, tmp
         rows = list(csv.DictReader(file))
     assert rows
     assert {row["pest"] for row in rows} == {"tent_caterpillar"}
+
+
+def test_training_can_continue_from_an_epoch_checkpoint(tiny_base_model, labeled_photos, tmp_path):
+    labels, photos = labeled_photos
+    common = ["--images", str(photos), "--batch-size", "2", "--tile-size", "64", "--overlap", "0"]
+    first = tmp_path / "first"
+    cli.main(
+        ["train", str(labels), "--output", str(first), "--base-model", str(tiny_base_model),
+         "--epochs", "2", *common]
+    )  # fmt: skip
+    checkpoints = sorted(path.name for path in (first / "checkpoints").iterdir())
+    assert checkpoints == ["epoch-1", "epoch-2"]
+
+    second = tmp_path / "second"
+    cli.main(
+        ["train", str(labels), "--output", str(second),
+         "--base-model", str(first / "checkpoints" / "epoch-2"), "--epochs", "1", *common]
+    )  # fmt: skip
+    assert (second / "model.safetensors").exists()

@@ -62,11 +62,21 @@ def train(
             train_step(model, processor, optimizer, batch, label_ids, device)
             for batch in batches(tiles, config.batch_size)
         ]
+        save_model(model, processor, checkpoint_dir(output_dir, epoch))
         on_epoch(epoch, mean(losses))
 
-    output_dir.mkdir(parents=True, exist_ok=True)
-    model.save_pretrained(output_dir)
-    processor.save_pretrained(output_dir)
+    save_model(model, processor, output_dir)
+
+
+def checkpoint_dir(output_dir: Path, epoch: int) -> Path:
+    """A model folder for each epoch. To continue a stopped training, use it as the base model."""
+    return output_dir / "checkpoints" / f"epoch-{epoch}"
+
+
+def save_model(model, processor, folder: Path) -> None:
+    folder.mkdir(parents=True, exist_ok=True)
+    model.save_pretrained(folder)
+    processor.save_pretrained(folder)
 
 
 def train_step(

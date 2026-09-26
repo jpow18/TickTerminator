@@ -98,7 +98,7 @@ The zero-shot detector is a good start, but a model trained on your own photos i
    ```bash
    tickterminator train labels.json --images ./flight_photos --output models/tents-v1
    ```
-   Training starts from RT-DETR v2 (Apache-2.0 license) and uses the same tiles as the scanner. A GPU makes it much faster. Options: `--epochs` (30), `--batch-size` (4), `--learning-rate` (0.0001), `--base-model`.
+   Training starts from RT-DETR v2 (Apache-2.0 license) and uses the same tiles as the scanner. A GPU makes it much faster. Options: `--epochs` (30), `--batch-size` (4), `--learning-rate` (0.0001), `--base-model`. After each epoch, a copy of the model goes to `checkpoints/epoch-N` in the output folder. To continue a training that stopped, use that folder as `--base-model`.
 4. **Scan with the trained model.**
    ```bash
    tickterminator scan ./new_flight --detector trained --model models/tents-v1
