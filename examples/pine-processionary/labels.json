@@ -1,0 +1,133 @@
+{
+  "images": [
+    {
+      "id": 1,
+      "file_name": "france_close.jpg",
+      "width": 200,
+      "height": 170
+    },
+    {
+      "id": 2,
+      "file_name": "italy_close.jpg",
+      "width": 255,
+      "height": 191
+    },
+    {
+      "id": 3,
+      "file_name": "italy_tree.jpg",
+      "width": 255,
+      "height": 191
+    },
+    {
+      "id": 4,
+      "file_name": "portugal_close.jpg",
+      "width": 214,
+      "height": 160
+    },
+    {
+      "id": 5,
+      "file_name": "portugal_tree.jpg",
+      "width": 216,
+      "height": 162
+    }
+  ],
+  "annotations": [
+    {
+      "id": 1,
+      "image_id": 1,
+      "category_id": 1,
+      "bbox": [
+        95,
+        85,
+        20,
+        25
+      ],
+      "area": 500,
+      "iscrowd": 0
+    },
+    {
+      "id": 2,
+      "image_id": 2,
+      "category_id": 1,
+      "bbox": [
+        112,
+        68,
+        60,
+        64
+      ],
+      "area": 3840,
+      "iscrowd": 0
+    },
+    {
+      "id": 3,
+      "image_id": 3,
+      "category_id": 1,
+      "bbox": [
+        70,
+        38,
+        10,
+        14
+      ],
+      "area": 140,
+      "iscrowd": 0
+    },
+    {
+      "id": 4,
+      "image_id": 3,
+      "category_id": 1,
+      "bbox": [
+        60,
+        76,
+        16,
+        14
+      ],
+      "area": 224,
+      "iscrowd": 0
+    },
+    {
+      "id": 5,
+      "image_id": 4,
+      "category_id": 1,
+      "bbox": [
+        82,
+        15,
+        58,
+        100
+      ],
+      "area": 5800,
+      "iscrowd": 0
+    },
+    {
+      "id": 6,
+      "image_id": 5,
+      "category_id": 1,
+      "bbox": [
+        70,
+        57,
+        10,
+        10
+      ],
+      "area": 100,
+      "iscrowd": 0
+    },
+    {
+      "id": 7,
+      "image_id": 5,
+      "category_id": 1,
+      "bbox": [
+        125,
+        60,
+        11,
+        12
+      ],
+      "area": 132,
+      "iscrowd": 0
+    }
+  ],
+  "categories": [
+    {
+      "id": 1,
+      "name": "pine_processionary"
+    }
+  ]
+}

@@ -12,7 +12,9 @@ class PestSpec:
     display_name: str
     view: View
     prompts: tuple[str, ...]
-    """Text prompts for zero-shot detectors. Describe what the camera sees."""
+    """Text prompts for zero-shot detectors. Short, concrete phrases work best."""
+    min_score: float = 0.2
+    """Default minimum score for zero-shot detectors. Measure it with `tickterminator evaluate`."""
 
 
 class Pest(Enum):
@@ -32,6 +34,12 @@ class Pest(Enum):
         "Bagworm",
         View.AERIAL,
         ("brown cone-shaped bags hanging from evergreen branches", "brown dead patch on a conifer"),
+    )
+    PINE_PROCESSIONARY = PestSpec(
+        "Pine processionary moth",
+        View.AERIAL,
+        ("white cocoon", "white fluffy ball"),
+        min_score=0.04,  # Best F1 on examples/pine-processionary.
     )
     DEFOLIATION = PestSpec(
         "Defoliation",

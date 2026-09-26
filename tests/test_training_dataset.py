@@ -2,15 +2,10 @@ import random
 from pathlib import Path
 
 from tickterminator.detection import Box
+from tickterminator.labels import Label, LabeledPhoto, pests_in
 from tickterminator.pests import Pest
 from tickterminator.tiling import TilingConfig
-from tickterminator.training.dataset import (
-    Label,
-    LabeledPhoto,
-    pests_in,
-    photo_tiles,
-    training_tiles,
-)
+from tickterminator.training.dataset import photo_tiles, training_tiles
 
 TILING = TilingConfig(tile_size=100, overlap=0)
 

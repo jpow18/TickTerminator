@@ -22,6 +22,8 @@ The `ml` extra installs PyTorch and Hugging Face Transformers. The first scan do
 
 ## Use
 
+To plan a flight that gives good photos, see the [flight guide](docs/flight-guide.md).
+
 ```bash
 tickterminator pests                     # list the pests you can find
 tickterminator scan ./flight_photos      # find all pests, write detections.csv and report.html
@@ -64,7 +66,7 @@ The flight area is divided into square sectors (default 50 m, set with `--sector
 | Option | Default | Description |
 |---|---|---|
 | `--pests` | all drone pests | Comma-separated pest names. See `tickterminator pests`. |
-| `--threshold` | 0.2 (OWLv2), 0.5 (trained) | Minimum score, 0 to 1. Increase it to get fewer false detections. |
+| `--threshold` | set for each pest (OWLv2), 0.5 (trained) | Minimum score, 0 to 1. Increase it to get fewer false detections. See `tickterminator evaluate`. |
 | `--detector` | `owlv2` | `owlv2` finds pests from text prompts. `trained` uses a model from `tickterminator train`. |
 | `--model` | – | Model folder for `--detector trained`. |
 | `--output` | `detections.csv`, `report.html` | Report file. Use more than once. |
@@ -102,7 +104,29 @@ The zero-shot detector is a good start, but a model trained on your own photos i
    tickterminator scan ./new_flight --detector trained --model models/tents-v1
    ```
 
-Keep some labeled photos out of training, and scan them to check the model. A few hundred labeled tents is a good start.
+A few hundred labeled tents is a good start.
+
+## Measure a detector
+
+Keep some labeled photos out of training. Use them to measure how good a detector is:
+
+```bash
+tickterminator evaluate test_labels.json --images ./test_photos --detector trained --model models/tents-v1
+```
+
+```
+40 photos, 112 labels
+pest                 threshold labels found correct precision recall    f1 photo f1
+tent_caterpillar          0.10    112   160      98      0.61   0.88  0.72     0.93
+tent_caterpillar          0.30    112   104      91      0.88   0.81  0.84     0.95
+```
+
+- **Precision:** the part of the detections that are correct.
+- **Recall:** the part of the labeled pests that the detector found.
+- **F1:** one number that combines precision and recall. Higher is better.
+- **Photo F1:** the same, but only for the question "does this photo show the pest?".
+
+A detection is correct when it overlaps a label by 50% or more (IoU ≥ 0.5, set with `--iou`). Use the results to select `--threshold` for `scan`, and to compare prompts or models.
 
 ## Count ticks
 

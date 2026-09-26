@@ -28,6 +28,14 @@ class GeoPoint:
         return north_m, east_m
 
 
+def ground_sample_distance_m(
+    altitude_m: float, focal_length_35mm: float, width: int, height: int
+) -> float:
+    """Ground width of one pixel for a camera that points straight down."""
+    ground_diagonal_m = altitude_m * FULL_FRAME_DIAGONAL_MM / focal_length_35mm
+    return ground_diagonal_m / math.hypot(width, height)
+
+
 @dataclass(frozen=True)
 class CameraPose:
     """Position of a camera that points straight down."""
@@ -40,8 +48,7 @@ class CameraPose:
     focal_length_35mm: float
 
     def meters_per_pixel(self, width: int, height: int) -> float:
-        ground_diagonal_m = self.altitude_m * FULL_FRAME_DIAGONAL_MM / self.focal_length_35mm
-        return ground_diagonal_m / math.hypot(width, height)
+        return ground_sample_distance_m(self.altitude_m, self.focal_length_35mm, width, height)
 
     def locate(self, x: float, y: float, width: int, height: int) -> GeoPoint:
         """Ground position of pixel (x, y). Assumes flat ground."""

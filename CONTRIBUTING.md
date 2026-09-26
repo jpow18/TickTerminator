@@ -18,14 +18,26 @@ The tests use a fake detector, so you do not need PyTorch to run them. To run re
 Add a member to `Pest` in `src/tickterminator/pests.py`:
 
 ```python
-FALL_WEBWORM = PestSpec(
-    "Fall webworm",
+PINE_PROCESSIONARY = PestSpec(
+    "Pine processionary moth",
     View.AERIAL,
-    ("silk web covering the leaves at the end of a tree branch",),
+    ("white cocoon", "white fluffy ball"),
+    min_score=0.04,
 )
 ```
 
-`View.AERIAL` pests are for drone photos. `View.CLOSE_UP` pests are for close-up photos, and `scan` finds them only when you name them with `--pests`. Write the prompts to describe what the camera sees, for example the web, not the insect itself. Test the prompts on real drone photos, and include example results in your pull request.
+- `View.AERIAL` pests are for drone photos. `View.CLOSE_UP` pests are for close-up photos, and `scan` finds them only when you name them with `--pests`.
+- Write the prompts to describe what the camera sees, for example the nest, not the insect. Short, concrete phrases work better than long descriptions.
+- `min_score` is the default threshold for the zero-shot detector. Good values are often much lower than 0.2.
+
+Select the prompts and `min_score` with numbers. Label some photos (COCO format), then compare prompts with `tickterminator evaluate`. `--prompt` tests a prompt without a code change:
+
+```bash
+tickterminator evaluate labels.json --images ./photos --pests fall_webworm \
+    --prompt "white web on leaves" --prompt "silk web" --thresholds 0.02,0.05,0.1,0.2
+```
+
+See [examples/pine-processionary](examples/pine-processionary) for an example. Include the results in your pull request.
 
 ## Add a detector
 
